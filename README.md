@@ -1,7 +1,5 @@
 # Banner Converter for GCRebuilder Import
 
-[bk-2.bmp](https://github.com/user-attachments/files/28896688/bk-2.bmp)
-
 Python script that converts common images (`.png`, `.jpg`, `.jpeg`, `.webp`) into the
 BMP banner format that **GCRebuilder** accepts when importing into `opening.bnr`
 (the image shown in the GameCube menu / Swiss / Dolphin).
@@ -12,6 +10,14 @@ BMP banner format that **GCRebuilder** accepts when importing into `opening.bnr`
 2. Resizes each one to **96×32** (standard banner size) using a Lanczos filter.
 3. Converts it to a **16-bit BMP** in the exact format GCRebuilder expects.
 4. Saves the result in `output/`, keeping the original name (only the extension changes to `.bmp`).
+   
+Example:
+
+<img width="96" height="32" alt="bk-1" src="https://github.com/user-attachments/assets/cd9d0f59-f614-4010-bf4d-e594da12b29e" />
+<img width="96" height="32" alt="bk-2" src="https://github.com/user-attachments/assets/70289cc4-a292-4f6e-9f69-46ca827f409e" />
+<img width="96" height="32" alt="bk-orig-1" src="https://github.com/user-attachments/assets/47bc57ba-e3f6-4e04-af24-2c37cfb53561" />
+<img width="96" height="32" alt="bk-orig-2" src="https://github.com/user-attachments/assets/9041ed8f-d5c7-471c-895d-b161789a8cbb" />
+
 
 ## Usage
 
