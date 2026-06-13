@@ -17,6 +17,10 @@ Example:
 <img width="96" height="32" alt="bk-2" src="https://github.com/user-attachments/assets/70289cc4-a292-4f6e-9f69-46ca827f409e" />
 <img width="96" height="32" alt="bk-orig-1" src="https://github.com/user-attachments/assets/47bc57ba-e3f6-4e04-af24-2c37cfb53561" />
 <img width="96" height="32" alt="bk-orig-2" src="https://github.com/user-attachments/assets/9041ed8f-d5c7-471c-895d-b161789a8cbb" />
+<img width="96" height="32" alt="symph-2" src="https://github.com/user-attachments/assets/83ff7da7-8430-4458-9b86-1f498a46a1b6" />
+<img width="96" height="32" alt="symph-1" src="https://github.com/user-attachments/assets/3ecab72c-fe93-4f49-aa2d-56734fd43496" />
+<img width="96" height="32" alt="mgs-1" src="https://github.com/user-attachments/assets/bf4c9df9-e6a6-4e44-b6f7-42bfddc6934e" />
+<img width="96" height="32" alt="mgs-2" src="https://github.com/user-attachments/assets/4f80a3bd-686a-41f6-a4ec-6a21a15239d7" />
 
 
 ## Usage
