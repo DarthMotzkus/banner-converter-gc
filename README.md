@@ -1,4 +1,4 @@
-# Banner Converter for GCRebuilder Import
+# Banner Converter for GCRebuilder Import in GC Games
 
 Python script that converts common images (`.png`, `.jpg`, `.jpeg`, `.webp`) into the
 BMP banner format that **GCRebuilder** accepts when importing into `opening.bnr`
@@ -65,6 +65,8 @@ to opaque correctly. Result: a correct banner in GCRebuilder **and** in Dolphin.
 
 > Note: since this GCRebuilder always ignores alpha and forces everything opaque,
 > banners with transparency are not possible with it.
+>
+> GCRebuilder did not open .dol or else, only game cube game files.
 
 ## Requirements
 
