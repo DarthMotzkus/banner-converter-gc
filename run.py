@@ -313,9 +313,14 @@ def main():
         # Each banner gets its own folder, matching the layout an app is copied in as:
         # drop default.dol beside it and the folder is ready for the SD card.
         print(f" -> {filename}")
-        title = args.title or ask("    Title", stem)
-        author = args.author or ask("    Author", "Unknown")
-        description = args.description or ask("    Description", title)
+        # `is not None` rather than a truthiness check, so --description "" can actually
+        # mean empty instead of falling through to the prompt.
+        title = args.title if args.title is not None else ask("    Title", stem)
+        author = args.author if args.author is not None else ask("    Author", "Unknown")
+        # Not defaulted to the title. The menu prints the description on its own line under
+        # the name, so accepting the default put the same text on screen twice.
+        description = (args.description if args.description is not None
+                       else ask("    Description (optional)", ""))
 
         output_path = os.path.join(output_dir, stem, "opening.bnr")
         if convert_to_opening_bnr(input_path, output_path, title, author, description,
