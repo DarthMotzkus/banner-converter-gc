@@ -1,15 +1,21 @@
-# Banner Converter for GCRebuilder Import in GC Games
+# Banner Converter for GameCube
 
-Python script that converts common images (`.png`, `.jpg`, `.jpeg`, `.webp`) into the
-BMP banner format that **GCRebuilder** accepts when importing into `opening.bnr`
-(the image shown in the GameCube menu / Swiss / Dolphin).
+Python script that turns ordinary images into GameCube banner artwork — the image shown in
+the GameCube menu, Swiss, cubiboot and Dolphin. Any size, any of the common formats.
+
+It can build two things, picked from a menu when you run it:
+
+| | Output | Use it for |
+|---|---|---|
+| **1** | `.bmp` | Importing into an existing `opening.bnr` with **GCRebuilder** |
+| **2** | `opening.bnr` | A complete banner file, for a homebrew app folder that ships its own |
 
 ## What it does
 
 1. Scans the folder where `run.py` lives for images.
 2. Resizes each one to **96×32** (standard banner size) using a Lanczos filter.
-3. Converts it to a **16-bit BMP** in the exact format GCRebuilder expects.
-4. Saves the result in `output/`, keeping the original name (only the extension changes to `.bmp`).
+3. Encodes it for the option you picked.
+4. Saves the result in `output/`.
    
 Example:
 
@@ -34,8 +40,22 @@ Example:
    ```
    python run.py
    ```
-4. Take the generated files from `output/` and import them in GCRebuilder
+   and pick option **1** (BMP) or **2** (`opening.bnr`).
+4. **Option 1** — take the `.bmp` files from `output/` and import them in GCRebuilder
    (**Banner details → Import...**).
+
+   **Option 2** — each image becomes `output/<name>/opening.bnr`. You are asked for a title,
+   an author and a description, which are written into the banner. Drop the app's
+   `default.dol` next to the `opening.bnr` and the folder is ready to copy to the SD card.
+
+### Non-interactive
+
+Both modes can skip the prompts, which is handy for scripting a whole catalog:
+
+```
+python run.py --mode bmp
+python run.py --mode bnr --title "My App" --author "Me" --description "Does a thing"
+```
 
 ## Disc number template
 
@@ -45,6 +65,25 @@ examples already placed — edit the text to whatever you need, export the artwo
 drop it in this folder, and run the script to turn it into the GCRebuilder BMP.
 
 ## Output format (technical details)
+
+### opening.bnr (option 2)
+
+The file is `BNR1`: a 4-byte magic, 0x1C bytes of padding, 0x1800 bytes of pixel data and one
+320-byte block of text fields (short and long name, short and long author, description). The
+whole file is 6496 bytes. `BNR2` is the same thing with six text blocks, one per language;
+homebrew has a single set of strings, so `BNR1` is what gets written and every reader accepts
+it.
+
+The pixels are **RGB5A3, big-endian, and tiled**. GC textures are not stored as scanlines: a
+16-bit texture is cut into 4×4 pixel tiles, each tile written row by row, and the tiles
+themselves written left to right, top to bottom. Writing plain scanlines instead produces a
+banner shredded into diagonal blocks — it is the easiest thing to get wrong here.
+
+Each pixel uses bit 15 to pick its own interpretation: set means opaque `R5 G5 B5`, clear
+means `A3 R4 G4 B4`. Fully opaque pixels therefore keep more colour precision, and unlike the
+GCRebuilder path below, **transparency actually works**.
+
+### BMP for GCRebuilder (option 1)
 
 GCRebuilder is picky. The BMP must be exactly:
 
