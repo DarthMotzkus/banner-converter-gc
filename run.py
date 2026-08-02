@@ -8,7 +8,7 @@ Two outputs, picked from the menu at startup:
      next to default.dol.
 
 Either way the source image can be any size and any of the common formats; it is
-resized to the 96x32 the console expects.
+fitted into the 96x32 the console expects.
 """
 
 import argparse
@@ -16,10 +16,21 @@ import os
 import struct
 import sys
 
-from PIL import Image
+from PIL import Image, ImageColor
 
-# The console's banner size. Everything is resized to this.
+# The console's banner size. Everything is fitted into this.
 WIDTH, HEIGHT = 96, 32
+
+# 96x32 is a 3:1 slot, and almost no source image is 3:1. How to reconcile the two:
+#
+#   contain  scale until the whole image fits, pad the leftover with --pad. Nothing is
+#            lost, nothing is distorted; a squarish source ends up small and surrounded.
+#   cover    scale until the slot is full and crop the overflow from the centre. Fills
+#            the banner, at the cost of the edges.
+#   stretch  force it to 96x32. Distorts, and is what every version before this did.
+FIT_MODES = ("contain", "cover", "stretch")
+DEFAULT_FIT = "contain"
+DEFAULT_PAD = (0, 0, 0, 0)
 
 VALID_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.webp', '.bmp', '.gif', '.tga')
 
@@ -79,21 +90,61 @@ def pack_text(value, size):
     return encoded + b'\x00' * (size - len(encoded))
 
 
-def load_image(input_path):
+def fit_image(img, fit, pad):
+    """Bring any image down to 96x32, honouring the aspect ratio unless told not to."""
+    if img.size == (WIDTH, HEIGHT):
+        return img
+
+    if fit == "stretch":
+        return img.resize((WIDTH, HEIGHT), Image.Resampling.LANCZOS)
+
+    src_w, src_h = img.size
+    pick = max if fit == "cover" else min
+    scale = pick(WIDTH / src_w, HEIGHT / src_h)
+
+    # Round rather than truncate, or a source that is already 3:1 can land on 95 wide and
+    # pick up a one-pixel bar it does not deserve.
+    new_w = max(1, round(src_w * scale))
+    new_h = max(1, round(src_h * scale))
+    scaled = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+    if fit == "cover":
+        left = (new_w - WIDTH) // 2
+        top = (new_h - HEIGHT) // 2
+        return scaled.crop((left, top, left + WIDTH, top + HEIGHT))
+
+    canvas = Image.new("RGBA", (WIDTH, HEIGHT), pad)
+    # No mask: copy the source alpha in as-is instead of compositing it onto the padding,
+    # so a transparent pad stays transparent in the opening.bnr.
+    canvas.paste(scaled, ((WIDTH - new_w) // 2, (HEIGHT - new_h) // 2))
+    return canvas
+
+
+def load_image(input_path, fit, pad):
     try:
         img = Image.open(input_path).convert("RGBA")
     except Exception as exc:
         print(f"[-] Could not open {os.path.basename(input_path)}: {exc}")
         return None
 
-    if img.size != (WIDTH, HEIGHT):
-        img = img.resize((WIDTH, HEIGHT), Image.Resampling.LANCZOS)
-
-    return img
+    return fit_image(img, fit, pad)
 
 
-def convert_to_gcrebuilder_bmp(input_path, output_path):
-    img = load_image(input_path)
+def parse_pad(value):
+    """Accept anything Pillow names a colour ('black', '#204080', 'rgba(0,0,0,0)')."""
+    if value is None:
+        return DEFAULT_PAD
+
+    try:
+        rgba = ImageColor.getrgb(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+
+    return rgba if len(rgba) == 4 else rgba + (255,)
+
+
+def convert_to_gcrebuilder_bmp(input_path, output_path, fit, pad):
+    img = load_image(input_path, fit, pad)
     if img is None:
         return False
 
@@ -151,8 +202,8 @@ def convert_to_gcrebuilder_bmp(input_path, output_path):
     return True
 
 
-def convert_to_opening_bnr(input_path, output_path, title, author, description):
-    img = load_image(input_path)
+def convert_to_opening_bnr(input_path, output_path, title, author, description, fit, pad):
+    img = load_image(input_path, fit, pad)
     if img is None:
         return False
 
@@ -196,6 +247,22 @@ def choose_mode():
         print("Type 1 or 2.")
 
 
+def choose_fit(mode):
+    padding = "transparent" if mode == "bnr" else "black"
+
+    print("The banner slot is 96x32 (3:1). How should an image of another shape fit?")
+    print(f"  [1] contain - whole image, {padding} bars where it does not reach")
+    print("  [2] cover   - fill the banner, crop what overflows")
+    print("  [3] stretch - squash it to 3:1 (distorts; the old behaviour)")
+    print()
+
+    while True:
+        choice = input("Choice [1/2/3]: ").strip() or "1"
+        if choice in ("1", "2", "3"):
+            return FIT_MODES[int(choice) - 1]
+        print("Type 1, 2 or 3.")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -204,6 +271,11 @@ def main():
     parser.add_argument("--title", help="banner title (opening.bnr only)")
     parser.add_argument("--author", help="banner author or company (opening.bnr only)")
     parser.add_argument("--description", help="banner description (opening.bnr only)")
+    parser.add_argument("--fit", choices=FIT_MODES,
+                        help=f"how to reconcile the aspect ratio (default: {DEFAULT_FIT})")
+    parser.add_argument("--pad", type=parse_pad, default=DEFAULT_PAD,
+                        help="colour of the bars left by --fit contain (default: "
+                             "transparent, which the GCRebuilder BMP renders as black)")
     args = parser.parse_args()
 
     current_dir = os.path.dirname(os.path.abspath(__file__)) if __file__ else os.getcwd()
@@ -220,6 +292,10 @@ def main():
     mode = args.mode or choose_mode()
     print()
 
+    # --mode on its own is a scripted run, so don't stop it to ask about the fit.
+    fit = args.fit or (DEFAULT_FIT if args.mode else choose_fit(mode))
+    print()
+
     os.makedirs(output_dir, exist_ok=True)
     converted = 0
 
@@ -230,7 +306,7 @@ def main():
         if mode == "bmp":
             output_path = os.path.join(output_dir, f"{stem}.bmp")
             print(f" -> {filename}")
-            if convert_to_gcrebuilder_bmp(input_path, output_path):
+            if convert_to_gcrebuilder_bmp(input_path, output_path, fit, args.pad):
                 converted += 1
             continue
 
@@ -242,7 +318,8 @@ def main():
         description = args.description or ask("    Description", title)
 
         output_path = os.path.join(output_dir, stem, "opening.bnr")
-        if convert_to_opening_bnr(input_path, output_path, title, author, description):
+        if convert_to_opening_bnr(input_path, output_path, title, author, description,
+                                  fit, args.pad):
             converted += 1
         print()
 

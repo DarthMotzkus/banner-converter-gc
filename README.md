@@ -13,7 +13,8 @@ It can build two things, picked from a menu when you run it:
 ## What it does
 
 1. Scans the folder where `run.py` lives for images.
-2. Resizes each one to **96×32** (standard banner size) using a Lanczos filter.
+2. Fits each one into **96×32** (standard banner size) with a Lanczos filter, keeping the
+   aspect ratio — see [Fitting](#fitting) below.
 3. Encodes it for the option you picked.
 4. Saves the result in `output/`.
    
@@ -48,13 +49,35 @@ Example:
    an author and a description, which are written into the banner. Drop the app's
    `default.dol` next to the `opening.bnr` and the folder is ready to copy to the SD card.
 
+## Fitting
+
+The banner slot is 96×32, a 3:1 letterbox, and almost no source image is 3:1. The script
+asks how to reconcile the two:
+
+| | Mode | What happens |
+|---|---|---|
+| **1** | `contain` *(default)* | Scale until the whole image fits, pad the rest. Nothing is lost or distorted. |
+| **2** | `cover` | Scale until the slot is full, crop the overflow from the centre. Fills the banner, loses the edges. |
+| **3** | `stretch` | Force it to 96×32. Distorts — this is what every version before this one did, unconditionally. |
+
+A square icon under `contain` becomes a 32×32 image with bars either side; under `cover` it
+becomes a horizontal band cut from its middle. Neither squashes it.
+
+The padding is **transparent** by default, so in `opening.bnr` the bars disappear against
+whatever is behind the banner. Override it with `--pad` and any colour Pillow understands
+(`--pad black`, `--pad "#204080"`). In the GCRebuilder BMP alpha is ignored, so transparent
+padding comes out black.
+
 ### Non-interactive
 
-Both modes can skip the prompts, which is handy for scripting a whole catalog:
+Both modes can skip the prompts, which is handy for scripting a whole catalog. Passing
+`--mode` also skips the fit question and takes `contain`:
 
 ```
 python run.py --mode bmp
+python run.py --mode bmp --fit cover
 python run.py --mode bnr --title "My App" --author "Me" --description "Does a thing"
+python run.py --mode bnr --fit contain --pad "#101018" --title "My App"
 ```
 
 ## Disc number template
